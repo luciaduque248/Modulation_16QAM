@@ -17,6 +17,8 @@ if ~exist(cfg.output_dir, "dir")
     mkdir(cfg.output_dir);
 end
 
+generated_files = {};
+
 fprintf("====================================================\n");
 fprintf(" SISTEMA DE COMUNICACIÓN DIGITAL - FASE II\n");
 fprintf(" Audio + Hamming(7,4) + 16-QAM + AWGN\n");
@@ -39,7 +41,9 @@ x_adc_rec = reconstruct_audio_signal(indices_adc_rx, levels);
 
 bit_rate_source = Fs * cfg.n_bits_audio;
 
-audiowrite(fullfile(cfg.output_dir, "fase2_audio_01_reconstruido_adc.wav"), x_adc_rec, Fs);
+file_adc_audio = fullfile(cfg.output_dir, "fase2_audio_01_reconstruido_adc.wav");
+audiowrite(file_adc_audio, x_adc_rec, Fs);
+generated_files = register_generated_file(generated_files, file_adc_audio);
 
 fprintf("Fs: %d Hz\n", Fs);
 fprintf("Duración usada: %.2f s\n", length(x)/Fs);
@@ -106,14 +110,20 @@ ber_coded_single = sum(bits_source ~= bits_decoded) / length(bits_source);
 indices_coded_rx = decode_fixed_length(bits_decoded, cfg.n_bits_audio);
 x_coded_rec = reconstruct_audio_signal(indices_coded_rx, levels);
 
-audiowrite(fullfile(cfg.output_dir, "fase2_audio_02_sin_hamming_16qam_awgn.wav"), x_uncoded_rec, Fs);
-audiowrite(fullfile(cfg.output_dir, "fase2_audio_03_con_hamming_16qam_awgn.wav"), x_coded_rec, Fs);
+file_uncoded_audio = fullfile(cfg.output_dir, "fase2_audio_02_sin_hamming_16qam_awgn.wav");
+file_coded_audio = fullfile(cfg.output_dir, "fase2_audio_03_con_hamming_16qam_awgn.wav");
+
+audiowrite(file_uncoded_audio, x_uncoded_rec, Fs);
+audiowrite(file_coded_audio, x_coded_rec, Fs);
+
+generated_files = register_generated_file(generated_files, file_uncoded_audio);
+generated_files = register_generated_file(generated_files, file_coded_audio);
 
 fprintf("Eb/N0 usado: %.2f dB\n", cfg.EbN0_single_dB);
 fprintf("BER sin codificación: %.10f\n", ber_uncoded_single);
 fprintf("BER con Hamming(7,4): %.10f\n\n", ber_coded_single);
 
-plot_audio_comparison_final( ...
+file_audio_baseband_fig = plot_audio_comparison_final( ...
     x, ...
     x_uncoded_rec, ...
     x_coded_rec, ...
@@ -121,6 +131,8 @@ plot_audio_comparison_final( ...
     "Audio original vs recuperado por 16-QAM sobre AWGN", ...
     cfg ...
 );
+
+generated_files = register_generated_file(generated_files, file_audio_baseband_fig);
 
 %% ============================================================
 % 4. Curvas BER vs Eb/N0
@@ -201,9 +213,14 @@ plot_ber_fase2( ...
     min_ber_plot ...
 );
 
+file_ber_fig = "";
+
 if cfg.save_figures
-    saveas(gcf, fullfile(cfg.output_dir, "fase2_fig_ber_curves.png"));
+    file_ber_fig = fullfile(cfg.output_dir, "fase2_fig_ber_curves.png");
+    saveas(gcf, file_ber_fig);
 end
+
+generated_files = register_generated_file(generated_files, file_ber_fig);
 
 fprintf("\n");
 
@@ -257,7 +274,9 @@ x_passband_rec = reconstruct_audio_signal(indices_passband_rx, levels);
 n_audio_samples_passband = length(indices_passband_rx);
 x_passband_original = x(1:n_audio_samples_passband);
 
-audiowrite(fullfile(cfg.output_dir, "fase2_audio_04_recuperado_pasabanada.wav"), x_passband_rec, Fs);
+file_passband_audio = fullfile(cfg.output_dir, "fase2_audio_04_recuperado_pasabanda.wav");
+audiowrite(file_passband_audio, x_passband_rec, Fs);
+generated_files = register_generated_file(generated_files, file_passband_audio);
 
 fprintf("Bits usados en pasabanda: %d\n", length(bits_passband));
 fprintf("Bits codificados en pasabanda: %d\n", length(bits_passband_coded_tx));
@@ -265,13 +284,19 @@ fprintf("Símbolos 16-QAM pasabanda: %d\n", length(symbols_passband_tx));
 fprintf("Muestras pasabanda: %d\n", length(tx_passband));
 fprintf("BER pasabanda con Hamming: %.10f\n\n", ber_passband);
 
-plot_audio_passband_final(x_passband_original, x_passband_rec, Fs, cfg);
-plot_tx_passband_final(tx_passband, cfg);
-plot_constellation_passband_final(symbols_passband_rx, cfg);
+file_audio_passband_fig = plot_audio_passband_final(x_passband_original, x_passband_rec, Fs, cfg);
+file_tx_passband_fig = plot_tx_passband_final(tx_passband, cfg);
+file_constellation_passband_fig = plot_constellation_passband_final(symbols_passband_rx, cfg);
+
+generated_files = register_generated_file(generated_files, file_audio_passband_fig);
+generated_files = register_generated_file(generated_files, file_tx_passband_fig);
+generated_files = register_generated_file(generated_files, file_constellation_passband_fig);
 
 %% ============================================================
 % 6. Guardar resultados
 % ============================================================
+
+fprintf("6) Guardar resultados\n");
 
 results = struct();
 
@@ -295,16 +320,26 @@ results.ber_coded_sim = ber_coded_sim;
 results.ber_uncoded_theory = ber_uncoded_theory;
 results.ber_coded_theory = ber_coded_theory;
 
-save(fullfile(cfg.output_dir, "fase2_results.mat"), "results", "cfg");
+file_results = fullfile(cfg.output_dir, "fase2_results.mat");
+save(file_results, "results", "cfg");
+generated_files = register_generated_file(generated_files, file_results);
 
-fprintf("Archivos generados en la carpeta: %s\n", cfg.output_dir);
-fprintf("Ejecución final completada.\n");
+fprintf("Resultados guardados correctamente.\n\n");
 
 %% ============================================================
-% Funciones locales de visualización
+% 7. Listado final de archivos generados
 % ============================================================
 
-function plot_audio_comparison_final(x, x_uncoded_rec, x_coded_rec, Fs, figure_title, cfg)
+fprintf("7) Listado de archivos generados\n");
+print_generated_files(generated_files, cfg.output_dir);
+
+fprintf("\nEjecución final completada.\n");
+
+%% ============================================================
+% Funciones locales de visualización y registro
+% ============================================================
+
+function file_path = plot_audio_comparison_final(x, x_uncoded_rec, x_coded_rec, Fs, figure_title, cfg)
     t = (0:length(x)-1) / Fs;
 
     start_sample = find(abs(x) > 0.02, 1, "first");
@@ -327,12 +362,15 @@ function plot_audio_comparison_final(x, x_uncoded_rec, x_coded_rec, Fs, figure_t
     title(figure_title);
     legend("Original", "Sin Hamming", "Con Hamming");
 
+    file_path = "";
+
     if cfg.save_figures
-        saveas(gcf, fullfile(cfg.output_dir, "fase2_fig_audio_baseband_comparison.png"));
+        file_path = fullfile(cfg.output_dir, "fase2_fig_audio_baseband_comparison.png");
+        saveas(gcf, file_path);
     end
 end
 
-function plot_audio_passband_final(x_original, x_rec, Fs, cfg)
+function file_path = plot_audio_passband_final(x_original, x_rec, Fs, cfg)
     t = (0:length(x_original)-1) / Fs;
 
     start_sample = find(abs(x_original) > 0.02, 1, "first");
@@ -354,12 +392,15 @@ function plot_audio_passband_final(x_original, x_rec, Fs, cfg)
     title("Audio original vs recuperado - prueba pasabanda");
     legend("Original", "Recuperado");
 
+    file_path = "";
+
     if cfg.save_figures
-        saveas(gcf, fullfile(cfg.output_dir, "fase2_fig_audio_passband_comparison.png"));
+        file_path = fullfile(cfg.output_dir, "fase2_fig_audio_passband_comparison.png");
+        saveas(gcf, file_path);
     end
 end
 
-function plot_tx_passband_final(tx_passband, cfg)
+function file_path = plot_tx_passband_final(tx_passband, cfg)
     figure;
     plot(tx_passband(1:min(1000, length(tx_passband))), "LineWidth", 1);
     grid on;
@@ -367,12 +408,15 @@ function plot_tx_passband_final(tx_passband, cfg)
     ylabel("Amplitud");
     title("Señal pasabanda transmitida");
 
+    file_path = "";
+
     if cfg.save_figures
-        saveas(gcf, fullfile(cfg.output_dir, "fase2_fig_tx_passband.png"));
+        file_path = fullfile(cfg.output_dir, "fase2_fig_tx_passband.png");
+        saveas(gcf, file_path);
     end
 end
 
-function plot_constellation_passband_final(symbols_rx, cfg)
+function file_path = plot_constellation_passband_final(symbols_rx, cfg)
     figure;
     plot(real(symbols_rx(1:min(3000, length(symbols_rx)))), ...
          imag(symbols_rx(1:min(3000, length(symbols_rx)))), ...
@@ -382,7 +426,50 @@ function plot_constellation_passband_final(symbols_rx, cfg)
     ylabel("Componente en cuadratura");
     title("Constelación recibida después de demodulación pasabanda");
 
+    file_path = "";
+
     if cfg.save_figures
-        saveas(gcf, fullfile(cfg.output_dir, "fase2_fig_constellation_passband.png"));
+        file_path = fullfile(cfg.output_dir, "fase2_fig_constellation_passband.png");
+        saveas(gcf, file_path);
+    end
+end
+
+function generated_files = register_generated_file(generated_files, file_path)
+    if isempty(file_path)
+        return;
+    end
+
+    if strlength(string(file_path)) == 0
+        return;
+    end
+
+    generated_files{end + 1} = char(file_path);
+end
+
+function print_generated_files(generated_files, output_dir)
+    if isempty(generated_files)
+        fprintf("No se registraron archivos generados.\n");
+        return;
+    end
+
+    fprintf("Carpeta de salida: %s\n", output_dir);
+    fprintf("Total de archivos generados: %d\n\n", length(generated_files));
+
+    for k = 1:length(generated_files)
+        file_path = generated_files{k};
+
+        if exist(file_path, "file")
+            file_info = dir(file_path);
+            file_size_kb = file_info.bytes / 1024;
+
+            fprintf("%02d. %s | %.2f KB\n", ...
+                k, ...
+                file_path, ...
+                file_size_kb);
+        else
+            fprintf("%02d. %s | ADVERTENCIA: no se encontró el archivo\n", ...
+                k, ...
+                file_path);
+        end
     end
 end
