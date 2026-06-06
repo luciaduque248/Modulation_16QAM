@@ -35,12 +35,20 @@ end
 audiowrite("output/audio_reconstruido_adc.wav", x_rec, Fs);
 
 t = (0:length(x)-1) / Fs;
-samples_to_plot = min(length(x), round(0.03 * Fs));
+
+start_sample = find(abs(x) > 0.02, 1, "first");
+
+if isempty(start_sample)
+    start_sample = 1;
+end
+
+samples_to_plot = round(0.03 * Fs);
+end_sample = min(length(x), start_sample + samples_to_plot - 1);
 
 figure;
-plot(t(1:samples_to_plot), x(1:samples_to_plot), "LineWidth", 1);
+plot(t(start_sample:end_sample), x(start_sample:end_sample), "LineWidth", 1);
 hold on;
-plot(t(1:samples_to_plot), x_rec(1:samples_to_plot), "--", "LineWidth", 1);
+plot(t(start_sample:end_sample), x_rec(start_sample:end_sample), "--", "LineWidth", 1);
 grid on;
 xlabel("Tiempo [s]");
 ylabel("Amplitud");
@@ -48,9 +56,9 @@ title("Comparación audio original vs audio reconstruido cuantificado");
 legend("Original", "Reconstruido");
 
 figure;
-plot(x(1:samples_to_plot), "LineWidth", 1);
+plot(x(start_sample:end_sample), "LineWidth", 1);
 hold on;
-stairs(x_rec(1:samples_to_plot), "LineWidth", 1);
+stairs(x_rec(start_sample:end_sample), "LineWidth", 1);
 grid on;
 xlabel("Muestra");
 ylabel("Amplitud");

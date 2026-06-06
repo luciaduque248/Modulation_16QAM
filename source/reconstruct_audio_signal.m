@@ -6,4 +6,5 @@ function x_rec = reconstruct_audio_signal(indices, levels)
     end
 
     x_rec = levels(indices + 1).';
+    x_rec = x_rec(:);
 end

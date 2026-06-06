@@ -3,16 +3,19 @@ function [indices, xq, levels, delta] = quantize_audio_uniform(x, n_bits)
         error("n_bits debe ser un entero positivo.");
     end
 
+    x = x(:);
+
     L = 2^n_bits;
     xmin = -1;
     xmax = 1;
 
-    delta = (xmax - xmin) / L;
+    levels = linspace(xmin, xmax, L);
+    delta = levels(2) - levels(1);
 
-    indices = floor((x - xmin) / delta);
+    indices = round((x - xmin) / (xmax - xmin) * (L - 1));
+
     indices(indices < 0) = 0;
     indices(indices > L - 1) = L - 1;
 
-    levels = xmin + ((0:L-1) + 0.5) * delta;
     xq = levels(indices + 1).';
 end
