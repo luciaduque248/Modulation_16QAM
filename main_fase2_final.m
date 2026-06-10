@@ -32,14 +32,16 @@ fprintf("1) Conversión A/D del audio\n");
 
 [x, Fs] = read_audio_source(cfg.audio_path, cfg.min_duration_s);
 
-[indices_tx, xq, levels, delta] = quantize_audio_uniform(x, cfg.n_bits_audio);
+bits_audio = cfg.n_bits_audio;
 
-bits_source = encode_fixed_length(indices_tx, cfg.n_bits_audio);
+[indices_tx, xq, levels, delta] = quantize_audio_uniform(x, bits_audio);
 
-indices_adc_rx = decode_fixed_length(bits_source, cfg.n_bits_audio);
+bits_source = encode_fixed_length(indices_tx, bits_audio);
+
+indices_adc_rx = decode_fixed_length(bits_source, bits_audio);
 x_adc_rec = reconstruct_audio_signal(indices_adc_rx, levels);
 
-bit_rate_source = Fs * cfg.n_bits_audio;
+bit_rate_source = Fs * bits_audio;
 
 file_adc_audio = fullfile(cfg.output_dir, "fase2_audio_01_reconstruido_adc.wav");
 audiowrite(file_adc_audio, x_adc_rec, Fs);
@@ -47,8 +49,8 @@ generated_files = register_generated_file(generated_files, file_adc_audio);
 
 fprintf("Fs: %d Hz\n", Fs);
 fprintf("Duración usada: %.2f s\n", length(x)/Fs);
-fprintf("Bits por muestra: %d\n", cfg.n_bits_audio);
-fprintf("Niveles de cuantificación: %d\n", 2^cfg.n_bits_audio);
+fprintf("Bits por muestra: %d\n", bits_audio);
+fprintf("Niveles de cuantificación: %d\n", 2^bits_audio);
 fprintf("Delta de cuantificación: %.6f\n", delta);
 fprintf("Bits fuente: %d\n", length(bits_source));
 fprintf("Tasa fuente: %.2f bps\n\n", bit_rate_source);
@@ -87,7 +89,7 @@ bits_uncoded_rx = demap_16qam_gray_fase2(symbols_uncoded_rx, length(bits_source)
 
 ber_uncoded_single = sum(bits_source ~= bits_uncoded_rx) / length(bits_source);
 
-indices_uncoded_rx = decode_fixed_length(bits_uncoded_rx, cfg.n_bits_audio);
+indices_uncoded_rx = decode_fixed_length(bits_uncoded_rx, bits_audio);
 x_uncoded_rec = reconstruct_audio_signal(indices_uncoded_rx, levels);
 
 bits_coded_tx = hamming74_encode(bits_source);
@@ -107,7 +109,7 @@ bits_decoded = hamming74_decode(bits_coded_rx, length(bits_source));
 
 ber_coded_single = sum(bits_source ~= bits_decoded) / length(bits_source);
 
-indices_coded_rx = decode_fixed_length(bits_decoded, cfg.n_bits_audio);
+indices_coded_rx = decode_fixed_length(bits_decoded, bits_audio);
 x_coded_rec = reconstruct_audio_signal(indices_coded_rx, levels);
 
 file_uncoded_audio = fullfile(cfg.output_dir, "fase2_audio_02_sin_hamming_16qam_awgn.wav");
@@ -133,6 +135,7 @@ file_audio_baseband_fig = plot_audio_comparison_final( ...
 );
 
 generated_files = register_generated_file(generated_files, file_audio_baseband_fig);
+
 
 %% ============================================================
 % 4. Curvas BER vs Eb/N0
@@ -231,7 +234,7 @@ fprintf("\n");
 fprintf("5) Prueba pasabanda\n");
 
 n_bits_passband = min(length(bits_source), cfg.max_bits_passband);
-n_bits_passband = floor(n_bits_passband / cfg.n_bits_audio) * cfg.n_bits_audio;
+n_bits_passband = floor(n_bits_passband / bits_audio) * bits_audio;
 
 bits_passband = bits_source(1:n_bits_passband);
 
@@ -268,7 +271,7 @@ bits_passband_decoded = hamming74_decode(bits_passband_coded_rx, length(bits_pas
 
 ber_passband = sum(bits_passband ~= bits_passband_decoded) / length(bits_passband);
 
-indices_passband_rx = decode_fixed_length(bits_passband_decoded, cfg.n_bits_audio);
+indices_passband_rx = decode_fixed_length(bits_passband_decoded, bits_audio);
 x_passband_rec = reconstruct_audio_signal(indices_passband_rx, levels);
 
 n_audio_samples_passband = length(indices_passband_rx);
@@ -301,8 +304,8 @@ fprintf("6) Guardar resultados\n");
 results = struct();
 
 results.Fs = Fs;
-results.n_bits_audio = cfg.n_bits_audio;
-results.quantization_levels = 2^cfg.n_bits_audio;
+results.n_bits_audio = bits_audio;
+results.quantization_levels = 2^bits_audio;
 results.delta = delta;
 results.source_bit_rate_bps = bit_rate_source;
 results.source_bits = length(bits_source);

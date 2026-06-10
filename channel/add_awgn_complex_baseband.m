@@ -16,9 +16,7 @@ function y = add_awgn_complex_baseband(x, EbN0_dB, bits_per_symbol, code_rate)
     EbN0_linear = 10^(EbN0_dB / 10);
 
     Es = mean(abs(x).^2);
-
     Eb = Es / (bits_per_symbol * code_rate);
-
     N0 = Eb / EbN0_linear;
 
     noise_sigma = sqrt(N0 / 2);

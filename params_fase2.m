@@ -13,7 +13,7 @@ function cfg = params_fase2()
     cfg.EbN0_single_dB = 12;
     cfg.EbN0_dB_vector = 0:2:16;
 
-    cfg.max_bits_for_ber = 300000;
+    cfg.max_bits_for_ber = 500000;
     cfg.max_bits_passband = 120000;
 
     cfg.samples_per_symbol = 16;
